@@ -198,6 +198,7 @@ func doInstall(cmdline []string) {
 		arch       = flag.String("arch", "", "Architecture to cross build for")
 		cc         = flag.String("cc", "", "C compiler to cross build with")
 		staticlink = flag.Bool("static", false, "Create statically-linked executable")
+		pie        = flag.Bool("pie", false, "Build as a Position Independent Executable")
 	)
 	flag.CommandLine.Parse(cmdline)
 	env := build.Env()
@@ -219,7 +220,7 @@ func doInstall(cmdline []string) {
 	//}
 
 	// Configure the build.
-	gobuild := tc.Go("build", buildFlags(env, *staticlink, buildTags)...)
+	gobuild := tc.Go("build", buildFlags(env, *staticlink, *pie, buildTags)...)
 
 	// arm64 CI builders are memory-constrained and can't handle concurrent builds,
 	// better disable it. This check isn't the best, it should probably
@@ -251,7 +252,7 @@ func doInstall(cmdline []string) {
 }
 
 // buildFlags returns the go tool flags for building.
-func buildFlags(env build.Environment, staticLinking bool, buildTags []string) (flags []string) {
+func buildFlags(env build.Environment, staticLinking bool, pie bool, buildTags []string) (flags []string) {
 	var ld []string
 	if env.Commit != "" {
 		ld = append(ld, "-X", "github.com/ethereum/go-ethereum/internal/version.gitCommit="+env.Commit)
@@ -267,10 +268,13 @@ func buildFlags(env build.Environment, staticLinking bool, buildTags []string) (
 		// alpine Linux.
 		extld := []string{"-Wl,-z,stack-size=0x800000"}
 		if staticLinking {
-			extld = append(extld, "-static")
+			extld = append(extld, "-static-pie")
 			// Under static linking, use of certain glibc features must be
 			// disabled to avoid shared library dependencies.
 			buildTags = append(buildTags, "osusergo", "netgo")
+		}
+		if pie {
+			ld = append(ld, "-buildmode=pie")
 		}
 		ld = append(ld, "-extldflags", "'"+strings.Join(extld, " ")+"'")
 	}
