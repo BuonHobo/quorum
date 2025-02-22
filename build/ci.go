@@ -275,7 +275,7 @@ func buildFlags(env build.Environment, staticLinking bool, pie bool, buildTags [
 		}
 		if pie {
 			flags = append(flags, "-buildmode=pie")
-			ld = append(ld, "-linkmode external")
+			ld = append(ld, "-linkmode=external")
 		}
 		ld = append(ld, "-extldflags", "'"+strings.Join(extld, " ")+"'")
 	}
